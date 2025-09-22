@@ -1,6 +1,6 @@
 // main.js
 
-const API_BASE = 'https://blog-backend-4-0lbl.onrender.com/api'; // REPLACE with your backend URL
+const API_BASE = 'https://blog-backend-5-nas2.onrender.com/api'; // REPLACE with your backend URL
 
 // Utility: get token & user info from localStorage
 function getAccessToken() {
