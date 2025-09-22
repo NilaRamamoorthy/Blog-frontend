@@ -41,7 +41,7 @@
       const token = localStorage.getItem('access');
       const data = Object.fromEntries(new FormData(this).entries());
 
-      const res = await fetch('https://your-backend-domain/api/posts/', {
+      const res = await fetch('https://blog-backend-4-0lbl.onrender.com/api/posts/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
