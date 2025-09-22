@@ -1,0 +1,132 @@
+<!-- post_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Post Details</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container py-4">
+    <a href="index.html" class="btn btn-outline-secondary mb-3">← Back to Home</a>
+
+    <!-- Post container -->
+    <div id="postContainer" class="mb-4"></div>
+
+    <!-- Comments -->
+    <div>
+      <h5>Comments</h5>
+      <ul id="commentsList" class="list-group mb-3"></ul>
+
+      <!-- Add Comment Form -->
+      <form id="commentForm" class="d-none">
+        <div class="mb-3">
+          <textarea class="form-control" id="commentInput" rows="3" placeholder="Write a comment..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Post Comment</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="./asserts/js/main.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const postId = new URLSearchParams(window.location.search).get("id");
+      const postContainer = document.getElementById("postContainer");
+      const commentsList = document.getElementById("commentsList");
+      const commentForm = document.getElementById("commentForm");
+      const commentInput = document.getElementById("commentInput");
+
+      const token = getToken();
+      const user = parseJwt(token);
+
+      if (token) commentForm.classList.remove("d-none");
+
+      try {
+        const res = await fetch(`${API_BASE}/posts/${postId}/`);
+        const post = await res.json();
+
+        // Show post
+        postContainer.innerHTML = `
+          <div class="card shadow-sm mb-4">
+            <div class="card-body">
+              <h3 class="card-title">${post.title}</h3>
+              <p class="card-text">${post.content}</p>
+              ${post.image ? `<img src="${post.image}" class="img-fluid mt-3">` : ''}
+              <p class="text-muted small mt-3">By ${post.author.username} • ${new Date(post.created_at).toLocaleString()}</p>
+            </div>
+          </div>
+        `;
+
+        // Show comments
+        post.comments.forEach(comment => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item d-flex justify-content-between align-items-start';
+          li.innerHTML = `
+            <div>
+              <strong>${comment.author.username}</strong>: ${comment.content}
+              <div class="text-muted small">${new Date(comment.created_at).toLocaleString()}</div>
+            </div>
+            ${
+              token && (user.id === comment.author.id || user.id === post.author.id)
+                ? `<button class="btn btn-sm btn-outline-danger delete-comment" data-id="${comment.id}">&times;</button>`
+                : ''
+            }
+          `;
+          commentsList.appendChild(li);
+        });
+
+        // Handle comment submit
+        commentForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const content = commentInput.value.trim();
+          if (!content) return;
+
+          const res = await fetch(`${API_BASE}/comments/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...getAuthHeaders()
+            },
+            body: JSON.stringify({ post: post.id, content })
+          });
+
+          if (res.ok) {
+            location.reload(); // quick way to re-fetch
+          } else {
+            alert("Failed to post comment.");
+          }
+        });
+
+        // Handle delete comment
+        commentsList.addEventListener("click", async (e) => {
+          if (e.target.classList.contains("delete-comment")) {
+            const commentId = e.target.dataset.id;
+            if (!confirm("Delete this comment?")) return;
+            const delRes = await fetch(`${API_BASE}/comments/${commentId}/`, {
+              method: 'DELETE',
+              headers: getAuthHeaders()
+            });
+            if (delRes.ok) {
+              e.target.closest('li').remove();
+            } else {
+              alert("Failed to delete comment.");
+            }
+          }
+        });
+
+      } catch (err) {
+        postContainer.innerHTML = `<div class="alert alert-danger">Failed to load post.</div>`;
+      }
+    });
+
+    // Helpers: in script.js
+    function parseJwt(token) {
+      if (!token) return {};
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(base64));
+    }
+  </script>
+</body>
+</html>
